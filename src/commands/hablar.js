@@ -66,11 +66,15 @@ export async function execute(interaction) {
     );
   }
 
+  // Avatar auto-generado único por nombre de personaje (DiceBear)
+  const avatarURL = `https://api.dicebear.com/9.x/pixel-art/png?seed=${encodeURIComponent(personaje)}&size=128`;
+
   // Enviar el mensaje como el personaje
   try {
     await webhook.send({
       content: mensaje,
       username: personaje,
+      avatarURL,
       allowedMentions: { parse: [] }, // evitar menciones accidentales
     });
 
