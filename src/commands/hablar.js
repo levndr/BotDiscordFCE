@@ -1,6 +1,9 @@
-import { SlashCommandBuilder } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 import { getCharacters } from '../utils/storage.js';
 import { getOrCreateWebhook } from '../utils/webhooks.js';
+
+const AVATAR_URL =
+  'https://raw.githubusercontent.com/levndr/BotDiscordFCE/main/assets/avatar.png';
 
 export const data = new SlashCommandBuilder()
   .setName('hablar')
@@ -66,16 +69,19 @@ export async function execute(interaction) {
     );
   }
 
-  // Avatar auto-generado único por nombre de personaje (DiceBear)
-  const avatarURL = `https://api.dicebear.com/9.x/pixel-art/png?seed=${encodeURIComponent(personaje)}&size=128`;
+  // Embed con estética de canal encriptado
+  const embed = new EmbedBuilder()
+    .setDescription(mensaje)
+    .setColor(0x8B0000)
+    .setFooter({ text: '◈ TRANSMISIÓN ENCRIPTADA · CANAL SEGURO FCE' });
 
   // Enviar el mensaje como el personaje
   try {
     await webhook.send({
-      content: mensaje,
       username: personaje,
-      avatarURL,
-      allowedMentions: { parse: [] }, // evitar menciones accidentales
+      avatarURL: AVATAR_URL,
+      embeds: [embed],
+      allowedMentions: { parse: [] },
     });
 
     await interaction.editReply('```\n✓\n```');
