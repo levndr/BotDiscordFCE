@@ -9,7 +9,6 @@ export const AVATAR_URL =
  */
 export function buildEmbed(texto) {
   return new EmbedBuilder()
-    .setDescription(texto)
-    .setColor(0x8B0000)
-    .setFooter({ text: '◈ FCE · SEÑAL ENCRIPTADA' });
+    .setDescription(`${texto}\n-# ◈ FCE · SEÑAL ENCRIPTADA`)
+    .setColor(0x8B0000);
 }
