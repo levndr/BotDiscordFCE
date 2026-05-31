@@ -41,7 +41,7 @@ async function registerCommands() {
     const commandData = [...client.commands.values()].map(c => c.data.toJSON());
     const rest = new REST().setToken(process.env.DISCORD_TOKEN);
     await rest.put(
-      Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
+      Routes.applicationCommands(process.env.CLIENT_ID),
       { body: commandData }
     );
     console.log('[OK] Comandos registrados en Discord.');
