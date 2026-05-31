@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { Client, Collection, Events, GatewayIntentBits, REST, Routes } from 'discord.js';
+import { Client, Collection, Events, GatewayIntentBits, REST, Routes, ActivityType } from 'discord.js';
 import { readdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
@@ -86,6 +86,15 @@ client.on(Events.MessageCreate, async message => {
 // ── Eventos ───────────────────────────────────────────────────
 client.once(Events.ClientReady, async readyClient => {
   console.log(`[OK] Bot conectado como ${readyClient.user.tag}`);
+
+  readyClient.user.setPresence({
+    status: 'online',
+    activities: [{
+      name: '! | /addchar /setchar /chars',
+      type: ActivityType.Listening,
+    }],
+  });
+
   await registerCommands();
 });
 
