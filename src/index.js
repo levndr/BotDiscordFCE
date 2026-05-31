@@ -90,8 +90,8 @@ client.once(Events.ClientReady, async readyClient => {
   readyClient.user.setPresence({
     status: 'online',
     activities: [{
-      name: '! | /addchar /setchar /chars',
-      type: ActivityType.Listening,
+      name: 'encrypting messages',
+      type: ActivityType.Playing,
     }],
   });
 
