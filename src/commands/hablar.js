@@ -1,36 +1,34 @@
-import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
+import { SlashCommandBuilder } from 'discord.js';
 import { getCharacters } from '../utils/storage.js';
 import { getOrCreateWebhook } from '../utils/webhooks.js';
-
-const AVATAR_URL =
-  'https://raw.githubusercontent.com/levndr/BotDiscordFCE/main/assets/avatar.png';
+import { AVATAR_URL, buildEmbed } from '../utils/message-helpers.js';
 
 export const data = new SlashCommandBuilder()
   .setName('hablar')
-  .setDescription('Enviá un mensaje como tu personaje.')
+  .setDescription('Enviá un mensaje como un personaje específico (no el activo).')
+  .addStringOption(option =>
+    option
+      .setName('personaje')
+      .setDescription('El personaje a usar')
+      .setRequired(true)
+      .setAutocomplete(true)
+  )
   .addStringOption(option =>
     option
       .setName('mensaje')
       .setDescription('El mensaje a enviar')
       .setRequired(true)
       .setMaxLength(2000)
-  )
-  .addStringOption(option =>
-    option
-      .setName('personaje')
-      .setDescription('Personaje a usar (deja vacío para usar el activo)')
-      .setRequired(false)
-      .setAutocomplete(true)
   );
 
 export async function execute(interaction) {
   await interaction.deferReply({ ephemeral: true });
 
-  const userId = interaction.user.id;
-  const mensaje = interaction.options.getString('mensaje', true);
-  const nombreOpc = interaction.options.getString('personaje');
+  const userId   = interaction.user.id;
+  const nombreOpc = interaction.options.getString('personaje', true);
+  const mensaje  = interaction.options.getString('mensaje', true);
 
-  const { characters, active } = getCharacters(userId);
+  const { characters } = getCharacters(userId);
 
   if (characters.length === 0) {
     return interaction.editReply(
@@ -38,55 +36,40 @@ export async function execute(interaction) {
     );
   }
 
-  // Resolver qué personaje usar
-  let personaje;
-  if (nombreOpc) {
-    personaje = characters.find(c => c.toLowerCase() === nombreOpc.toLowerCase());
-    if (!personaje) {
-      return interaction.editReply(
-        `\`\`\`\n[ERROR] No tenés un personaje llamado "${nombreOpc}".\n\`\`\``
-      );
-    }
-  } else {
-    personaje = active;
-    if (!personaje) {
-      return interaction.editReply(
-        '```\n[ERROR] No hay personaje activo. Usá /setchar para elegir uno.\n```'
-      );
-    }
+  const personaje = characters.find(
+    c => c.toLowerCase() === nombreOpc.toLowerCase()
+  );
+  if (!personaje) {
+    return interaction.editReply(
+      `\`\`\`\n[ERROR] No tenés un personaje llamado "${nombreOpc}".\n\`\`\``
+    );
   }
 
-  // Obtener o crear el webhook del canal
   const channel = interaction.channel;
-  if (!channel || !channel.isTextBased()) {
-    return interaction.editReply('```\n[ERROR] Este comando solo funciona en canales de texto.\n```');
+  if (!channel?.isTextBased()) {
+    return interaction.editReply(
+      '```\n[ERROR] Este comando solo funciona en canales de texto.\n```'
+    );
   }
 
   const webhook = await getOrCreateWebhook(channel);
   if (!webhook) {
     return interaction.editReply(
-      '```\n[ERROR] No tengo permisos para gestionar webhooks en este canal.\nNecesito el permiso "Gestionar Webhooks".\n```'
+      '```\n[ERROR] Sin permiso para gestionar webhooks en este canal.\n```'
     );
   }
 
-  // Embed con estética de canal encriptado
-  const embed = new EmbedBuilder()
-    .setDescription(mensaje)
-    .setColor(0x8B0000)
-    .setFooter({ text: '◈ TRANSMISIÓN ENCRIPTADA · CANAL SEGURO FCE' });
-
-  // Enviar el mensaje como el personaje
   try {
     await webhook.send({
       username: personaje,
       avatarURL: AVATAR_URL,
-      embeds: [embed],
+      embeds: [buildEmbed(mensaje)],
       allowedMentions: { parse: [] },
     });
-
-    await interaction.editReply('```\n✓\n```');
+    // Borrar la respuesta efímera para no dejar rastro
+    await interaction.deleteReply();
   } catch (err) {
-    console.error('[hablar] Error al enviar webhook:', err);
+    console.error('[hablar] Error:', err);
     await interaction.editReply('```\n[ERROR] No se pudo enviar el mensaje.\n```');
   }
 }
