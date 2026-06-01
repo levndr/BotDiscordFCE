@@ -25,10 +25,14 @@ export async function execute(interaction) {
     });
   }
 
-  return interaction.reply({
-    content: `\`\`\`\n[OK] Personaje "${nombre}" eliminado.\`\`\``,
+  // Confirmación privada
+  await interaction.reply({
+    content: `\`\`\`\n[OK] Personaje "${removed.name}" eliminado.\`\`\``,
     ephemeral: true,
   });
+
+  // Anuncio público en el canal
+  await interaction.channel.send(`**${removed.name} ha salido del servidor encriptado.**`);
 }
 
 export async function autocomplete(interaction) {
@@ -36,9 +40,9 @@ export async function autocomplete(interaction) {
   const { characters } = getCharacters(interaction.user.id);
 
   const choices = characters
-    .filter(c => c.toLowerCase().includes(focused))
+    .filter(c => c.name.toLowerCase().includes(focused))
     .slice(0, 25)
-    .map(c => ({ name: c, value: c }));
+    .map(c => ({ name: c.name, value: c.name }));
 
   await interaction.respond(choices);
 }

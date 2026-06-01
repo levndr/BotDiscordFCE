@@ -16,8 +16,9 @@ export async function execute(interaction) {
   }
 
   const lines = characters.map(c => {
-    const marker = c === active ? ' ◄ ACTIVO' : '';
-    return `  · ${c}${marker}`;
+    const marker = c.name === active ? ' ◄ ACTIVO' : '';
+    const phone = c.phone ? ` [${c.phone}]` : '';
+    return `  · ${c.name}${phone}${marker}`;
   });
 
   const msg = [

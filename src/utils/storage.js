@@ -25,26 +25,44 @@ function writeJSON(filename, data) {
 
 // ── Personajes ────────────────────────────────────────────────
 
-/** Devuelve { characters: string[], active: string|null } para un usuario. */
+/**
+ * Normaliza una entrada de personaje a objeto { name, phone }.
+ * Soporta entradas legacy donde el personaje era solo un string.
+ */
+function toCharObj(entry) {
+  if (typeof entry === 'string') return { name: entry, phone: '' };
+  return entry;
+}
+
+/**
+ * Devuelve { characters: { name, phone }[], active: string|null } para un usuario.
+ */
 export function getCharacters(userId) {
   const data = readJSON('characters.json');
-  return data[userId] ?? { characters: [], active: null };
+  const entry = data[userId] ?? { characters: [], active: null };
+  return {
+    characters: (entry.characters ?? []).map(toCharObj),
+    active: entry.active ?? null,
+  };
 }
 
 /**
  * Agrega un personaje al usuario.
  * @returns {boolean} false si el personaje ya existe.
  */
-export function addCharacter(userId, name) {
+export function addCharacter(userId, name, phone = '') {
   const data = readJSON('characters.json');
   if (!data[userId]) data[userId] = { characters: [], active: null };
 
   const normalized = name.trim();
-  if (data[userId].characters.some(c => c.toLowerCase() === normalized.toLowerCase())) {
-    return false;
-  }
+  const normalizedPhone = phone.trim();
 
-  data[userId].characters.push(normalized);
+  const exists = (data[userId].characters ?? []).some(
+    c => toCharObj(c).name.toLowerCase() === normalized.toLowerCase()
+  );
+  if (exists) return false;
+
+  data[userId].characters.push({ name: normalized, phone: normalizedPhone });
   if (!data[userId].active) data[userId].active = normalized;
   writeJSON('characters.json', data);
   return true;
@@ -52,26 +70,27 @@ export function addCharacter(userId, name) {
 
 /**
  * Elimina un personaje del usuario.
- * @returns {boolean} false si no existía.
+ * @returns {{ name: string, phone: string }|null} null si no existía.
  */
 export function removeCharacter(userId, name) {
   const data = readJSON('characters.json');
-  if (!data[userId]) return false;
+  if (!data[userId]) return null;
 
-  const idx = data[userId].characters.findIndex(
-    c => c.toLowerCase() === name.toLowerCase()
+  const idx = (data[userId].characters ?? []).findIndex(
+    c => toCharObj(c).name.toLowerCase() === name.toLowerCase()
   );
-  if (idx === -1) return false;
+  if (idx === -1) return null;
 
-  const removed = data[userId].characters[idx];
+  const removed = toCharObj(data[userId].characters[idx]);
   data[userId].characters.splice(idx, 1);
 
-  if (data[userId].active?.toLowerCase() === removed.toLowerCase()) {
-    data[userId].active = data[userId].characters[0] ?? null;
+  if (data[userId].active?.toLowerCase() === removed.name.toLowerCase()) {
+    const next = data[userId].characters[0];
+    data[userId].active = next ? toCharObj(next).name : null;
   }
 
   writeJSON('characters.json', data);
-  return true;
+  return removed;
 }
 
 /**
@@ -82,12 +101,12 @@ export function setActive(userId, name) {
   const data = readJSON('characters.json');
   if (!data[userId]) return false;
 
-  const match = data[userId].characters.find(
-    c => c.toLowerCase() === name.toLowerCase()
+  const match = (data[userId].characters ?? []).find(
+    c => toCharObj(c).name.toLowerCase() === name.toLowerCase()
   );
   if (!match) return false;
 
-  data[userId].active = match;
+  data[userId].active = toCharObj(match).name;
   writeJSON('characters.json', data);
   return true;
 }
