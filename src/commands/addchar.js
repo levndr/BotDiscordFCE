@@ -60,5 +60,5 @@ export async function execute(interaction) {
   });
 
   // Anuncio público en el canal
-  await interaction.channel.send(`**${nombre} - ${telefono} ha ingresado al servidor encriptado.**`);
+  await interaction.channel.send(`**[${nombre}] - [${telefono}] ha ingresado al servidor encriptado.**`);
 }
