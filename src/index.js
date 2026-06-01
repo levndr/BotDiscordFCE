@@ -6,6 +6,7 @@ import { fileURLToPath, pathToFileURL } from 'url';
 import { getCharacters } from './utils/storage.js';
 import { getOrCreateWebhook } from './utils/webhooks.js';
 import { AVATAR_URL, buildEmbed } from './utils/message-helpers.js';
+import { startAdminServer } from './admin-server.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -127,6 +128,9 @@ client.on(Events.InteractionCreate, async interaction => {
     }
   }
 });
+
+// ── Admin HTTP server ─────────────────────────────────────────
+startAdminServer();
 
 // ── Login ─────────────────────────────────────────────────────
 client.login(process.env.DISCORD_TOKEN);
