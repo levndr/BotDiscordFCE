@@ -49,7 +49,8 @@ function page(title, bodyHtml) {
     tr:hover td { background: #1a202c; }
     .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 9999px; font-size: 0.75rem; }
     .active { background: #276749; color: #9ae6b4; }
-    .uid { font-family: monospace; font-size: 0.82rem; color: #68d391; }
+    .uid { font-family: monospace; font-size: 0.75rem; color: #4a9270; }
+    .discord-name { font-weight: 600; color: #e2e8f0; }
     .empty { color: #718096; font-style: italic; }
     form { margin-bottom: 1.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap; }
     input[type=text] { background: #1a202c; border: 1px solid #2d3748; color: #e2e8f0; padding: 0.4rem 0.75rem; border-radius: 0.375rem; font-size: 0.9rem; width: 260px; }
@@ -69,12 +70,13 @@ ${bodyHtml}
 
 // ── Lógica de consultas ───────────────────────────────────────
 
-function renderList(token) {
+async function renderList(token, client) {
   const data = readJSON('characters.json');
   const rows = [];
   for (const [userId, entry] of Object.entries(data)) {
+    const discordName = await getDiscordName(client, userId);
     for (const c of (entry.characters ?? []).map(toCharObj)) {
-      rows.push({ userId, name: c.name, phone: c.phone || '—', active: entry.active === c.name });
+      rows.push({ userId, discordName, name: c.name, phone: c.phone || '—', active: entry.active === c.name });
     }
   }
 
@@ -82,7 +84,7 @@ function renderList(token) {
     ? `<tr><td colspan="4" class="empty">No hay personajes registrados.</td></tr>`
     : rows.map(r => `
       <tr>
-        <td class="uid">${r.userId}</td>
+        <td><span class="discord-name">${r.discordName}</span><br><span class="uid">${r.userId}</span></td>
         <td>${r.name}${r.active ? ' <span class="badge active">activo</span>' : ''}</td>
         <td>${r.phone}</td>
       </tr>`).join('');
@@ -98,14 +100,14 @@ function renderList(token) {
       </form>
     </div>
     <table>
-      <thead><tr><th>Discord User ID</th><th>Personaje</th><th>Teléfono</th></tr></thead>
+      <thead><tr><th>Usuario de Discord</th><th>Personaje</th><th>Teléfono</th></tr></thead>
       <tbody>${tableRows}</tbody>
     </table>
     <p class="total">${rows.length} personaje(s) · ${Object.keys(data).length} usuario(s)</p>
   `);
 }
 
-function renderWhois(token, query) {
+async function renderWhois(token, query, client) {
   const data = readJSON('characters.json');
   const q = query.toLowerCase();
   const found = [];
@@ -113,7 +115,8 @@ function renderWhois(token, query) {
   for (const [userId, entry] of Object.entries(data)) {
     for (const c of (entry.characters ?? []).map(toCharObj)) {
       if (c.name.toLowerCase().includes(q)) {
-        found.push({ userId, name: c.name, phone: c.phone || '—', active: entry.active === c.name });
+        const discordName = await getDiscordName(client, userId);
+        found.push({ userId, discordName, name: c.name, phone: c.phone || '—', active: entry.active === c.name });
       }
     }
   }
@@ -124,20 +127,20 @@ function renderWhois(token, query) {
       <tr>
         <td>${r.name}${r.active ? ' <span class="badge active">activo</span>' : ''}</td>
         <td>${r.phone}</td>
-        <td class="uid">${r.userId}</td>
+        <td><span class="discord-name">${r.discordName}</span><br><span class="uid">${r.userId}</span></td>
       </tr>`).join('');
 
   return page(`Whois: ${query}`, `
     <h1>🔍 Whois: "${query}"</h1>
     <div class="nav"><a href="?token=${token}">← Lista completa</a></div>
     <table>
-      <thead><tr><th>Personaje</th><th>Teléfono</th><th>Discord User ID</th></tr></thead>
+      <thead><tr><th>Personaje</th><th>Teléfono</th><th>Usuario de Discord</th></tr></thead>
       <tbody>${tableRows}</tbody>
     </table>
   `);
 }
 
-function renderUserchars(token, userId) {
+async function renderUserchars(token, userId, client) {
   const data = readJSON('characters.json');
   const entry = data[userId];
 
@@ -149,6 +152,7 @@ function renderUserchars(token, userId) {
     `);
   }
 
+  const discordName = await getDiscordName(client, userId);
   const chars = (entry.characters ?? []).map(toCharObj);
   const tableRows = chars.length === 0
     ? `<tr><td colspan="2" class="empty">Sin personajes.</td></tr>`
@@ -158,8 +162,8 @@ function renderUserchars(token, userId) {
         <td>${c.phone || '—'}</td>
       </tr>`).join('');
 
-  return page(`Personajes de ${userId}`, `
-    <h1>👤 Personajes de <span class="uid">${userId}</span></h1>
+  return page(`Personajes de ${discordName}`, `
+    <h1>👤 ${discordName} <span class="uid">(${userId})</span></h1>
     <div class="nav"><a href="?token=${token}">← Lista completa</a></div>
     <table>
       <thead><tr><th>Personaje</th><th>Teléfono</th></tr></thead>
@@ -170,7 +174,17 @@ function renderUserchars(token, userId) {
 
 // ── Servidor ──────────────────────────────────────────────────
 
-export function startAdminServer() {
+/** Obtiene el nombre de usuario de Discord dado un userId. Devuelve el ID si falla. */
+async function getDiscordName(client, userId) {
+  try {
+    const user = await client.users.fetch(userId);
+    return user.displayName ?? user.username;
+  } catch {
+    return userId;
+  }
+}
+
+export function startAdminServer(client) {
   const ADMIN_TOKEN = process.env.ADMIN_TOKEN;
   const PORT = process.env.PORT ?? 3000;
 
@@ -179,7 +193,7 @@ export function startAdminServer() {
     return;
   }
 
-  const server = createServer((req, res) => {
+  const server = createServer(async (req, res) => {
     const url = new URL(req.url, `http://localhost`);
 
     if (url.pathname !== '/admin') {
@@ -200,11 +214,11 @@ export function startAdminServer() {
     const userchars = url.searchParams.get('userchars');
 
     if (whois) {
-      html = renderWhois(ADMIN_TOKEN, whois);
+      html = await renderWhois(ADMIN_TOKEN, whois, client);
     } else if (userchars) {
-      html = renderUserchars(ADMIN_TOKEN, userchars);
+      html = await renderUserchars(ADMIN_TOKEN, userchars, client);
     } else {
-      html = renderList(ADMIN_TOKEN);
+      html = await renderList(ADMIN_TOKEN, client);
     }
 
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });

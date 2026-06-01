@@ -130,7 +130,7 @@ client.on(Events.InteractionCreate, async interaction => {
 });
 
 // ── Admin HTTP server ─────────────────────────────────────────
-startAdminServer();
+startAdminServer(client);
 
 // ── Login ─────────────────────────────────────────────────────
 client.login(process.env.DISCORD_TOKEN);
